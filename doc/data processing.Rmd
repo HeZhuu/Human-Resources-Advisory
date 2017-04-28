@@ -1,0 +1,138 @@
+---
+title: "Human Resource"
+author: "yuan mei"
+date: "April 21, 2017"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+# load package
+if (!require("corrplot")) install.packages('corrplot')
+if (!require("survival")) install.packages('survival')
+if (!require("survminer")) install.packages('survminer')
+
+
+library(randomForest)
+library(randomForestSRC)
+library(caret)
+library(randomForest)
+library(corrplot)
+library(dplyr) 
+library(rattle)
+library("survival")
+library("survminer")
+library("ggplot2")
+library("reshape2")
+
+```
+
+#Step1 Processing Data 
+###import data
+```{r}
+hr <- as.data.frame(read.csv("../data/HR_comma_sep.csv") )
+```
+
+###exploratory data analysis
+```{r}
+# Look at the data
+head(hr)
+summary(hr)
+str(hr)
+sum(is.na(hr))
+# Since we need categorical data when using Survival analysis model, we split the continous vairables(satisfaction_level,last_evaluation,average_monthly_hours into) into different categories according to the distribution.
+plot(ecdf(hr$satisfaction_level))
+plot(ecdf(hr$last_evaluation))
+plot(ecdf(hr$average_montly_hours))
+#as we can see in the plots, these three indicaters are nearly uniformly distributed.
+
+#As for "satisfaction_level",the staff tends to stay when satisfaction level<0.5;the staff tends to leave when satisfaction level>0.5; So we use quantile(0.5) to split the data.
+hr$left <- factor(hr$left)
+ggplot(hr, aes(satisfaction_level)) + 
+  geom_density(aes(group = left, fill = left), alpha = 0.5) + 
+  theme_bw() + xlab("Satisfaction Level") + ylab("Density") + 
+  ggtitle("Density of Satisfaction Level")
+
+#As for "last evaluation", the staff's behaviors can be grouped into three groups."last evaluation" <0.6, 0.6<"last evaluation" <0.8,0.8 < last evaluation".
+ggplot(hr, aes(last_evaluation)) + 
+  geom_density(aes(group = left, fill = left), alpha = 0.5) + 
+  theme_bw() + xlab("last evaluation") + ylab("Density") + 
+  ggtitle("Density of last evaluation")
+
+#As for "average_montly_hours", the staff's behaviors can be grouped into three groups."average_montly_hours"<160, 160<"last evaluation" < 240, 240 < last evaluation".
+ggplot(hr, aes(average_montly_hours)) + 
+  geom_density(aes(group = left, fill = left), alpha = 0.5) + 
+  theme_bw() + xlab("average_montly_hours") + ylab("Density") + 
+  ggtitle("Density of average_montly_hours")
+```
+
+###Generate Dataframe
+```{r}
+#0 is not satisfied 1: very very happy
+satisfy<-rep(0,nrow(hr))
+satisfy[hr$satisfaction_level>= 0.5]<- 1
+hr$satisfy<-satisfy
+
+# 0 is low evaluation; 1 is medium evaluation; 2 is high evaluation.
+evaluate<-rep(0,nrow(hr))
+evaluate[hr$last_evaluation>= 0.6 & hr$last_evaluation<= 0.8]<- 1
+evaluate[hr$last_evaluation > 0.8] <-2
+hr$evaluate<-evaluate
+
+# 0 is spending low average monthly hours; 1 is spending medium average monthly hours; 2 is spending high average monthly hours.
+monthly.hours<-rep(0,nrow(hr))
+monthly.hours[hr$average_montly_hours>= 160 & hr$average_montly_hours<= 240]<- 1
+monthly.hours[hr$average_montly_hours > 240] <-2
+hr$monthly.hours<-monthly.hours
+
+# Work accident
+hr$Work_accident<-ifelse(as.logical(hr$Work_accident), 0, 1)
+```
+
+### Correlation plot
+```{r}
+M<-hr[,c(-9,-10)]
+M$left<-as.numeric(M$left)
+M<-M[,c(-1,-2,-4)]
+M<-cor(M)
+corrplot( M ,is.corr = FALSE, type = "full", order = "hclust", 
+         tl.col = "black", tl.srt = 30)
+# as we can see from the correlation plot, the variables "Satify","Promotion_last_5years","Work_accident" is highly correlated staff status "left". So we choose these indicators as our feartures.
+```
+
+#Step 2 Survival Analysis
+```{r}
+#we first need to group some non-level variables
+#cox model
+hr$left<-as.numeric(hr$left)
+hr.cox <- coxph(Surv(time_spend_company, left) ~
+                  satisfy+promotion_last_5years+Work_accident, data = hr)
+#baseline values
+ggsurvplot(survfit(hr.cox), color = "#2E9FDF",
+           ggtheme = theme_minimal())
+
+#Visualization for different variables
+#example: satisfy+promotion_last_5years+Work_accident
+fit<-survfit(Surv(time_spend_company, left) ~ satisfy+promotion_last_5years+Work_accident, data = hr)
+ggsurvplot(fit,ggtheme = theme_minimal())
+
+
+# predict new data  
+new <- with(hr,
+               data.frame(satisfy=c(0.9,0.8), Work_accident=c(1,0), promotion_last_5years=c(0,1))
+               )
+#predicted values
+fit1<-survfit(hr.cox, newdata = new)
+predict<-data.frame(fit1$surv)
+predict$time<-1:8
+
+#convert the dataframe to long format
+predict_long<-melt(predict, id = "time")
+ggplot(data=predict_long, aes(x=time, y=value, colour=variable))+
+  geom_line()
+```
+
+
