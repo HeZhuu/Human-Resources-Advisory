@@ -3,9 +3,8 @@
 
 Term: Spring 2017
 
-+ Team #4
 + Team members
-	+ Yuan Mei (Presenter)
+	+ Yuan Mei 
 	+ Yingxin Zhang
 	+ Kexin Nie
 	+ Xuanzi Xu
