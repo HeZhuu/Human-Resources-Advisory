@@ -10,7 +10,7 @@ library(dplyr)
 library(ggvis)
 library(plotly)
 
-load("hr.RData")
+#load("hr.RData")
 
 shinyUI(navbarPage("Who Will Leave",fluid = TRUE,
                
@@ -149,7 +149,7 @@ shinyUI(navbarPage("Who Will Leave",fluid = TRUE,
                                   br(),
                                   br(),
                                   br(),
-                                   column(7,
+                                   column(9,
                                           #verbatimTextOutput("value")
                                          plotlyOutput("plot")
 
