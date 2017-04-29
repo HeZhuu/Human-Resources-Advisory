@@ -16,7 +16,7 @@ Term: Spring 2017
 
 [ShinyApp link](https://ads-yz3032.shinyapps.io/who_will_leave/)
 ![screenshot](figs/preface2.jpg)
-![screenshot](figs/preface3.jpg)	
+![screenshot](figs/perface3.jpg)	
 **Contribution statement**: ([default](doc/a_note_on_contributions.md)) All team members contributed equally in all stages of this project. All team members approve our work presented in this GitHub repository including this contributions statement. 
 	
 
